@@ -14,11 +14,6 @@ func (t *token) GetTokenBalance() *big.Int {
 	return t.balance
 }
 
-type poolCoin struct {
-	name    string
-	balance *big.Int
-}
-
 type reserve struct {
 	X token
 	Y token
@@ -26,10 +21,10 @@ type reserve struct {
 
 type Pool struct {
 	Rs reserve
-	PC poolCoin
+	PC token
 }
 
-func CreatePool(tokenA, tokenB token, pc poolCoin) *Pool {
+func CreatePool(tokenA, tokenB, pc token) *Pool {
 	return &Pool{
 		Rs: reserve{
 			X: tokenA,
@@ -46,28 +41,30 @@ func (p *Pool) Reserve() (x, y *big.Int) {
 	return
 }
 
+// return x*y = k
 func (p *Pool) K() *big.Int {
 	x, y := p.Reserve()
 	return x.Mul(x, y)
 }
 
-// return poolCoin.balance
+// return PC.balance
 func (p *Pool) getPoolCoinBalance() *big.Int {
 	return p.PC.balance
 }
 
+// return pc name
 func (p *Pool) getPoolCoinName() string {
 	return p.PC.name
 }
 
 // return reserve coin name
-func (p *Pool) pairNameFromPool() (string, string) {
+func (p *Pool) getPairNameFromPool() (string, string) {
 	reserve := p.Rs
 	return reserve.X.name, reserve.Y.name
 }
 
 // business logic
-func (p *Pool) Deposit(tokenA, tokenB token) poolCoin {
+func (p *Pool) Deposit(tokenA, tokenB token) token {
 	x, y := p.Reserve() //pool reserve
 	pc := p.getPoolCoinBalance()
 	aBalance, bBlance := tokenA.balance, tokenB.balance
@@ -84,12 +81,42 @@ func (p *Pool) Deposit(tokenA, tokenB token) poolCoin {
 	if poolRatio != tokenRatio {
 		log.Panic("To deposit is equal ratio which Rx div Ry  ")
 	}
-	pCoin := pc.Div(pc, poolRatio)
+
+	//lp = sqrt(x*y)
+	var lp *big.Int
+	lp = lp.Sqrt(aBalance.Mul(aBalance, bBlance))
 	p.Rs.X.balance = x.Add(x, aBalance)
 	p.Rs.Y.balance = y.Add(y, bBlance)
-	p.PC.balance = pc.Add(pc, pCoin)
-	return poolCoin{
+	p.PC.balance = pc.Add(pc, lp)
+	return token{
 		name:    p.getPoolCoinName(),
-		balance: pCoin,
+		balance: lp,
 	}
+}
+
+func (p *Pool) Withdraw(pc token) (x, y token) {
+	if pc.name != p.getPoolCoinName() {
+		log.Panic("not pool coin")
+	}
+	poolBalance := p.getPoolCoinBalance()
+	// (ps/ pc.balance) *100
+	percent := pc.balance.Mul(pc.balance.Div(pc.balance, poolBalance), big.NewInt(100))
+	xBalance, yBalance := p.Reserve()
+	hundread := big.NewInt(100)
+	xRefund := hundread.Div(xBalance.Mul(xBalance, percent), hundread)
+
+	yRefund := hundread.Div(yBalance.Mul(yBalance, percent), hundread)
+	xName, yName := p.getPairNameFromPool()
+	x = token{
+		name:    xName,
+		balance: xRefund,
+	}
+	y = token{
+		name:    yName,
+		balance: yRefund,
+	}
+	p.Rs.X.balance = xBalance.Sub(xBalance, xRefund)
+	p.Rs.Y.balance = yBalance.Sub(yBalance, yRefund)
+	p.PC.balance = poolBalance.Sub(poolBalance, pc.balance)
+	return
 }
