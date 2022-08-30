@@ -4,30 +4,35 @@ import (
 	"math/big"
 )
 
-func Price(x, y int64) (*big.Int, error) {
-	var price int64
+func Price(x, y *big.Float) (*big.Float, error) {
+	fx, _ := x.Float64()
+	fy, _ := y.Float64()
+	var price float64
 	var err error
-	if x > y {
-		price = x / y
-	} else if x == y {
+	if fx > fy {
+		price = fx / fy
+	} else if fx == fy {
 		price = 1
 	} else {
-		price = y / x
+		price = fy / fx
 	}
 
-	return big.NewInt(price), err
+	return big.NewFloat(price), err
 
 }
 
 // (x /tv ) * 100 = percent
 // tv = tatal value
-func getPercent(x, tv int64) *big.Int {
-	floatx := float64(x)
-	floattv := float64(tv)
-	return big.NewInt(int64(floatx / floattv * 100.0))
+func getPercent(x, tv *big.Float) *big.Float {
+	ftx, _ := x.Float64()
+	ftv, _ := tv.Float64()
+	return big.NewFloat(ftx / ftv * 100.0)
 }
 
 // (tv * percentage) / 100
-func getBalanceFromPercent(tv, percent int64) *big.Int {
-	return big.NewInt((tv * percent) / 100)
+func getBalanceFromPercent(tv, percent *big.Float) *big.Float {
+	ft, _ := tv.Float64()
+	fp, _ := percent.Float64()
+	return big.NewFloat((ft * fp) / 100)
+
 }

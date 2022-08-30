@@ -4,9 +4,9 @@ import "math/big"
 
 type token struct {
 	Name    string
-	Balance *big.Int
+	Balance *big.Float
 }
 
-func (t *token) GetTokenBalance() *big.Int {
+func (t *token) GetTokenBalance() *big.Float {
 	return t.Balance
 }

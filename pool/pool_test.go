@@ -8,16 +8,16 @@ import (
 func TestReserve(t *testing.T) {
 	tokenA := token{
 		Name:    "bitcoin",
-		Balance: big.NewInt(10000),
+		Balance: big.NewFloat(10000),
 	}
 
 	tokenB := token{
 		Name:    "Atom",
-		Balance: big.NewInt(200000),
+		Balance: big.NewFloat(200000),
 	}
 	pc := token{
 		Name:    "uni-ba",
-		Balance: big.NewInt(44721),
+		Balance: big.NewFloat(44721),
 	}
 	pool := CreatePool(tokenA, tokenB, pc)
 	t.Run("Reserve offer reserve balance", func(t *testing.T) {
@@ -34,9 +34,9 @@ func TestReserve(t *testing.T) {
 
 func TestK(t *testing.T) {
 	type test struct {
-		x int64
-		y int64
-		k int64
+		x float64
+		y float64
+		k float64
 	}
 	tests := []test{
 		{
@@ -64,21 +64,21 @@ func TestK(t *testing.T) {
 
 		tokenA := token{
 			Name:    "bitcoin",
-			Balance: big.NewInt(tc.x),
+			Balance: big.NewFloat(tc.x),
 		}
 
 		tokenB := token{
 			Name:    "Atom",
-			Balance: big.NewInt(tc.y),
+			Balance: big.NewFloat(tc.y),
 		}
 		ps := token{
 			Name:    "uni-BA",
-			Balance: big.NewInt(tc.k),
+			Balance: big.NewFloat(tc.k),
 		}
 		pool := CreatePool(tokenA, tokenB, ps)
 		got := pool.K()
 
-		if big.NewInt(tc.k).Cmp(got) != 0 {
+		if big.NewFloat(tc.k).Cmp(got) != 0 {
 			t.Errorf("Expected %v and got %v", tc.k, got)
 		}
 	}

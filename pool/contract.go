@@ -14,7 +14,7 @@ func (p *Pool) Deposit(tokenA, tokenB token) (lp *token) {
 
 	xDeposit, yDeposit := tokenA.Balance, tokenB.Balance
 	fmt.Printf("xDeposit = %v , yDeposit =%v\n", xDeposit, yDeposit)
-	poolPrice, err := Price(x.Int64(), y.Int64())
+	poolPrice, err := Price(x, y)
 
 	if err != nil {
 		log.Print(err)
@@ -22,7 +22,7 @@ func (p *Pool) Deposit(tokenA, tokenB token) (lp *token) {
 
 	fmt.Printf("poolPrice = %v\n", poolPrice)
 
-	depositPrice, err := Price(xDeposit.Int64(), yDeposit.Int64())
+	depositPrice, err := Price(xDeposit, yDeposit)
 	if err != nil {
 		log.Print(err)
 	}
@@ -64,7 +64,7 @@ func (p *Pool) Deposit(tokenA, tokenB token) (lp *token) {
 	case 1:
 		fmt.Println("poolPrice < depositPrice")
 		//lpBalance = sqrt(x*y)
-		var resultY *big.Int
+		var resultY *big.Float
 		resultY = resultY.Mul(xDeposit, poolPrice)
 		lpBalance := xDeposit.Sqrt(xDeposit.Mul(xDeposit, resultY))
 		p.Rs.X.Balance = x.Add(x, xDeposit)
@@ -93,16 +93,16 @@ func (p *Pool) WithDraw(lp token) (x, y token) {
 	// (10/1000) * 100 = 1
 	lpBalance := lp.GetTokenBalance()
 	fmt.Println("lpBalance=", lpBalance)
-	percent := getPercent(lpBalance.Int64(), poolBalance.Int64())
+	percent := getPercent(lpBalance, poolBalance)
 	fmt.Println("percent =", percent)
 	//xPrice = x*percent / 100
 	//ex
 	//x = 1000
 	//percent = 1
 	//(x * percent) / 100 = 10
-	xPrice := getBalanceFromPercent(rx.Int64(), percent.Int64())
+	xPrice := getBalanceFromPercent(rx, percent)
 	fmt.Println("xPrice = ", xPrice)
-	yPrice := getBalanceFromPercent(ry.Int64(), percent.Int64())
+	yPrice := getBalanceFromPercent(ry, percent)
 	fmt.Println("yPrice=", yPrice)
 	xName, yName := p.getPairNameFromPool()
 	x = token{
@@ -137,7 +137,10 @@ func (p *Pool) Swap(t token) token {
 	if tName == xName {
 		//+rx -> - ry
 		rx = rx.Add(rx, tBalance)
-		sendY := ry.Sub(ry, k.Div(k, rx))
+		// sendY := ry.Sub(ry, k.Div(k, rx))
+		sendY := ry.Sub(ry, k.Quo(k, rx))
+		fee := sendY.Quo(sendY, big.NewFloat(0.03))
+		sendY = sendY.Sub(sendY, fee)
 		return token{
 			Name:    yName,
 			Balance: sendY,
@@ -145,8 +148,9 @@ func (p *Pool) Swap(t token) token {
 	} else {
 		//+ry -> -rx
 		ry = ry.Add(rx, tBalance)
-		sendX := rx.Sub(rx, k.Div(k, ry))
-
+		sendX := rx.Sub(rx, k.Quo(k, ry))
+		fee := sendX.Quo(sendX, big.NewFloat(0.03))
+		sendX = sendX.Sub(sendX, fee)
 		return token{
 			Name:    xName,
 			Balance: sendX,

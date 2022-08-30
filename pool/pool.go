@@ -27,22 +27,22 @@ func CreatePool(tokenA, tokenB, pc token) *Pool {
 }
 
 // return reserved coin
-func (p *Pool) Reserve() (x, y *big.Int) {
+func (p *Pool) Reserve() (x, y *big.Float) {
 	x = p.Rs.X.Balance
 	y = p.Rs.Y.Balance
 	return
 }
 
 // return x*y = k
-func (p *Pool) K() *big.Int {
+func (p *Pool) K() *big.Float {
 
 	x, y := p.Reserve()
-	k := big.Int{}
+	var k big.Float
 	return k.Mul(x, y)
 }
 
 // return PC.balance
-func (p *Pool) getPoolCoinBalance() *big.Int {
+func (p *Pool) getPoolCoinBalance() *big.Float {
 	return p.PC.Balance
 }
 

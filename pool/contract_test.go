@@ -7,12 +7,12 @@ import (
 
 func TestDeposit(t *testing.T) {
 	type test struct {
-		px int64
-		py int64
-		pc int64
-		a  int64
-		b  int64
-		lp int64
+		px float64
+		py float64
+		pc float64
+		a  float64
+		b  float64
+		lp float64
 	}
 	tests := []test{
 		{
@@ -52,23 +52,23 @@ func TestDeposit(t *testing.T) {
 		for _, tc := range tests {
 			tokenA := token{
 				Name:    "bitcoin",
-				Balance: big.NewInt(tc.px),
+				Balance: big.NewFloat(tc.px),
 			}
 
 			tokenB := token{
 				Name:    "Atom",
-				Balance: big.NewInt(tc.py),
+				Balance: big.NewFloat(tc.py),
 			}
 			pc := token{
 				Name:    "uni-ba",
-				Balance: big.NewInt(tc.pc),
+				Balance: big.NewFloat(tc.pc),
 			}
 			pool := CreatePool(tokenA, tokenB, pc)
-			tokenA.Balance = big.NewInt(tc.a)
-			tokenB.Balance = big.NewInt(tc.b)
+			tokenA.Balance = big.NewFloat(tc.a)
+			tokenB.Balance = big.NewFloat(tc.b)
 
 			pc.Balance = pool.Deposit(tokenA, tokenB).Balance
-			if pc.Balance.Cmp(big.NewInt(tc.lp)) != 0 {
+			if pc.Balance.Cmp(big.NewFloat(tc.lp)) != 0 {
 				t.Errorf("Expected %v , got %s", tc.lp, pc.Balance)
 			}
 		}
@@ -79,22 +79,22 @@ func TestDeposit(t *testing.T) {
 
 func TestWithDraw(t *testing.T) {
 	type test struct {
-		px int64
-		py int64
-		pc int64
-		lp int64
-		x  int64
-		y  int64
+		px float64
+		py float64
+		pc float64
+		lp float64
+		x  float64
+		y  float64
 	}
 
 	tests := []test{
 		{
-			px: 10000,
-			py: 20000,
-			pc: 14142,
-			lp: 1000,
-			x:  700,
-			y:  1400,
+			px: 10000.00,
+			py: 20000.00,
+			pc: 14142.00,
+			lp: 1000.00,
+			x:  700.00,
+			y:  1400.00,
 		},
 		{
 			px: 11113,
@@ -110,28 +110,28 @@ func TestWithDraw(t *testing.T) {
 		t.Run("TestWithDraw!", func(t *testing.T) {
 			tokenA := token{
 				Name:    "bitcoin",
-				Balance: big.NewInt(tc.px),
+				Balance: big.NewFloat(tc.px),
 			}
 
 			tokenB := token{
 				Name:    "Atom",
-				Balance: big.NewInt(tc.py),
+				Balance: big.NewFloat(tc.py),
 			}
 			pc := token{
 				Name:    "uni-ba",
-				Balance: big.NewInt(tc.pc),
+				Balance: big.NewFloat(tc.pc),
 			}
 			pool := CreatePool(tokenA, tokenB, pc)
 			lp := token{
 				Name:    "uni-ba",
-				Balance: big.NewInt(tc.lp),
+				Balance: big.NewFloat(tc.lp),
 			}
 			x, y := pool.WithDraw(lp)
 
-			if big.NewInt(tc.x).Cmp(x.Balance) != 0 {
+			if big.NewFloat(tc.x).Cmp(x.Balance) != 0 {
 				t.Errorf("Expected %v got %v", tc.x, x.Balance)
 			}
-			if big.NewInt(tc.y).Cmp(y.Balance) != 0 {
+			if big.NewFloat(tc.y).Cmp(y.Balance) != 0 {
 				t.Errorf("Expected %v got %v", tc.y, y.Balance)
 			}
 		})
