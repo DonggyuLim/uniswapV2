@@ -1,7 +1,7 @@
 package pool
 
 import (
-	"math/big"
+	"github.com/shopspring/decimal"
 )
 
 // return x/y or y/x or 1
@@ -27,22 +27,22 @@ func CreatePool(tokenA, tokenB, pc token) *Pool {
 }
 
 // return reserved coin
-func (p *Pool) Reserve() (x, y *big.Float) {
+func (p *Pool) Reserve() (x, y decimal.Decimal) {
 	x = p.Rs.X.Balance
 	y = p.Rs.Y.Balance
 	return
 }
 
 // return x*y = k
-func (p *Pool) K() *big.Float {
+func (p *Pool) K() decimal.Decimal {
 
 	x, y := p.Reserve()
-	var k big.Float
-	return k.Mul(x, y)
+	z := x.Mul(y)
+	return z
 }
 
 // return PC.balance
-func (p *Pool) getPoolCoinBalance() *big.Float {
+func (p *Pool) getPoolCoinBalance() decimal.Decimal {
 	return p.PC.Balance
 }
 

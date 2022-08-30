@@ -3,8 +3,11 @@ package pool
 import (
 	"fmt"
 	"log"
-	"math/big"
+
+	"github.com/shopspring/decimal"
 )
+
+const fee = "0.03"
 
 // business logic
 // 난중에DB 업데이트해야함.
@@ -14,17 +17,17 @@ func (p *Pool) Deposit(tokenA, tokenB token) (lp *token) {
 
 	xDeposit, yDeposit := tokenA.Balance, tokenB.Balance
 	fmt.Printf("xDeposit = %v , yDeposit =%v\n", xDeposit, yDeposit)
-	poolPrice, err := Price(x, y)
+	poolPrice, err := price(x, y)
 
 	if err != nil {
-		log.Print(err)
+		log.Panic(err)
 	}
 
 	fmt.Printf("poolPrice = %v\n", poolPrice)
 
-	depositPrice, err := Price(xDeposit, yDeposit)
+	depositPrice, err := price(xDeposit, yDeposit)
 	if err != nil {
-		log.Print(err)
+		log.Panic(err)
 	}
 	fmt.Printf("depositPrice = %v\n", depositPrice)
 
@@ -36,26 +39,29 @@ func (p *Pool) Deposit(tokenA, tokenB token) (lp *token) {
 		// x = 30 y =500
 		fmt.Println("poolPrice > depositPrice")
 		if xDeposit.Cmp(yDeposit) == -1 {
-			rightY := y.Add(x, poolPrice)
-			lpBalance := xDeposit.Sqrt(xDeposit.Mul(xDeposit, rightY))
+			// rightY := y.Add(x, poolPrice)
+			rightY := x.Add(poolPrice)
+			lpBalance := sqrt(xDeposit.Mul(rightY))
+
 			lp = &token{
 				Name:    p.getPoolCoinName(),
 				Balance: lpBalance,
 			}
-			p.Rs.X.Balance = x.Add(x, xDeposit)
-			p.Rs.Y.Balance = y.Add(x, rightY)
-			p.PC.Balance = pc.Add(pc, lpBalance)
+			p.Rs.X.Balance = x.Add(xDeposit)
+			p.Rs.Y.Balance = y.Add(rightY)
+			p.PC.Balance = pc.Add(lpBalance)
 		}
 	case 0:
 		fmt.Println("Equal!")
 		//poolPrice == depositPrice
-		p.Rs.X.Balance = x.Add(x, xDeposit)
-		p.Rs.Y.Balance = y.Add(y, yDeposit)
+		p.Rs.X.Balance = x.Add(xDeposit)
+		p.Rs.Y.Balance = y.Add(yDeposit)
 
 		//lpBalance = sqrt(x*y)
-		lpBalance := xDeposit.Sqrt(xDeposit.Mul(xDeposit, yDeposit))
+		lpBalance := sqrt(xDeposit.Mul(yDeposit))
+
 		fmt.Println("lpBalance = ", lpBalance)
-		p.PC.Balance = pc.Add(pc, lpBalance)
+		p.PC.Balance = pc.Add(lpBalance)
 		lp = &token{
 			Name:    p.getPoolCoinName(),
 			Balance: lpBalance,
@@ -64,12 +70,13 @@ func (p *Pool) Deposit(tokenA, tokenB token) (lp *token) {
 	case 1:
 		fmt.Println("poolPrice < depositPrice")
 		//lpBalance = sqrt(x*y)
-		var resultY *big.Float
-		resultY = resultY.Mul(xDeposit, poolPrice)
-		lpBalance := xDeposit.Sqrt(xDeposit.Mul(xDeposit, resultY))
-		p.Rs.X.Balance = x.Add(x, xDeposit)
-		p.Rs.Y.Balance = y.Add(y, resultY)
-		p.PC.Balance = pc.Add(pc, lpBalance)
+
+		resultY := xDeposit.Mul(poolPrice)
+
+		lpBalance := sqrt(xDeposit.Mul(resultY))
+		p.Rs.X.Balance = x.Add(xDeposit)
+		p.Rs.Y.Balance = y.Add(resultY)
+		p.PC.Balance = pc.Add(lpBalance)
 		lp = &token{
 			Name:    p.getPoolCoinName(),
 			Balance: lpBalance,
@@ -113,9 +120,9 @@ func (p *Pool) WithDraw(lp token) (x, y token) {
 		Name:    yName,
 		Balance: yPrice,
 	}
-	p.Rs.X.Balance = rx.Sub(rx, xPrice)
-	p.Rs.Y.Balance = ry.Sub(ry, yPrice)
-	p.PC.Balance = poolBalance.Sub(poolBalance, lp.Balance)
+	p.Rs.X.Balance = rx.Sub(xPrice)
+	p.Rs.Y.Balance = ry.Sub(yPrice)
+	p.PC.Balance = poolBalance.Sub(lpBalance)
 	return x, y
 }
 
@@ -127,7 +134,7 @@ func (p *Pool) Swap(t token) token {
 	}
 
 	//This is what you want to swap balance of token
-	tBalance := t.GetTokenBalance()
+	tB := t.GetTokenBalance()
 
 	//x,y balance
 	rx, ry := p.Reserve()
@@ -136,21 +143,30 @@ func (p *Pool) Swap(t token) token {
 	k := p.K()
 	if tName == xName {
 		//+rx -> - ry
-		rx = rx.Add(rx, tBalance)
+		rx = rx.Add(tB)
 		// sendY := ry.Sub(ry, k.Div(k, rx))
-		sendY := ry.Sub(ry, k.Quo(k, rx))
-		fee := sendY.Quo(sendY, big.NewFloat(0.03))
-		sendY = sendY.Sub(sendY, fee)
+		sendY := ry.Sub(k.Div(rx))
+		fee, err := decimal.NewFromString(fee)
+		if err != nil {
+			log.Panic(err)
+		}
+		fee = sendY.Div(fee)
+		sendY = sendY.Sub(fee)
 		return token{
 			Name:    yName,
 			Balance: sendY,
 		}
 	} else {
 		//+ry -> -rx
-		ry = ry.Add(rx, tBalance)
-		sendX := rx.Sub(rx, k.Quo(k, ry))
-		fee := sendX.Quo(sendX, big.NewFloat(0.03))
-		sendX = sendX.Sub(sendX, fee)
+		ry = ry.Add(tB)
+		sendX := rx.Sub(k.Div(ry))
+		fee, err := decimal.NewFromString(fee)
+		if err != nil {
+			log.Panic(err)
+		}
+		fee = sendX.Div(fee)
+
+		sendX = sendX.Sub(fee)
 		return token{
 			Name:    xName,
 			Balance: sendX,

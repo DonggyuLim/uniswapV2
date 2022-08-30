@@ -1,12 +1,14 @@
 package pool
 
-import "math/big"
+import (
+	"github.com/shopspring/decimal"
+)
 
 type token struct {
 	Name    string
-	Balance *big.Float
+	Balance decimal.Decimal
 }
 
-func (t *token) GetTokenBalance() *big.Float {
+func (t *token) GetTokenBalance() decimal.Decimal {
 	return t.Balance
 }
