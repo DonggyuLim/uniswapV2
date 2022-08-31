@@ -1,7 +1,6 @@
 package pool
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/shopspring/decimal"
@@ -9,121 +8,128 @@ import (
 
 const fee = "0.03"
 
+type Lp struct {
+	lp       token
+	recipent token
+}
+
 // business logic
 // 난중에DB 업데이트해야함.
-func (p *Pool) Deposit(tokenA, tokenB token) (lp *token) {
+func (p *Pool) Deposit(tokenA, tokenB token) (lp token) {
+	//reserve token amount
+	rx, ry := p.Reserve() //pool reserve
 
-	x, y := p.Reserve() //pool reserve
+	//deposit token amount
+	dx, dy := tokenA.Balance, tokenB.Balance
 
-	xDeposit, yDeposit := tokenA.Balance, tokenB.Balance
-	fmt.Printf("xDeposit = %v , yDeposit =%v\n", xDeposit, yDeposit)
-	poolPrice, err := price(x, y)
+	//pp = pool price poolPrice = 고정
+	pp := p.poolPrice()
 
-	if err != nil {
-		log.Panic(err)
-	}
-
-	fmt.Printf("poolPrice = %v\n", poolPrice)
-
-	depositPrice, err := price(xDeposit, yDeposit)
-	if err != nil {
-		log.Panic(err)
-	}
-	fmt.Printf("depositPrice = %v\n", depositPrice)
+	//dp = Deposit Price
+	dp := price(dx, dy)
 
 	pc := p.getPoolCoinBalance()
 
-	switch poolPrice.Cmp(depositPrice) {
-	//poolPrice < depositPrice
-	case -1:
-		// x = 30 y =500
-		fmt.Println("poolPrice > depositPrice")
-		if xDeposit.Cmp(yDeposit) == -1 {
-			// rightY := y.Add(x, poolPrice)
-			rightY := x.Add(poolPrice)
-			lpBalance := sqrt(xDeposit.Mul(rightY))
-
-			lp = &token{
-				Name:    p.getPoolCoinName(),
-				Balance: lpBalance,
-			}
-			p.Rs.X.Balance = x.Add(xDeposit)
-			p.Rs.Y.Balance = y.Add(rightY)
-			p.PC.Balance = pc.Add(lpBalance)
-		}
+	switch pp.Cmp(dp) {
 	case 0:
-		fmt.Println("Equal!")
-		//poolPrice == depositPrice
-		p.Rs.X.Balance = x.Add(xDeposit)
-		p.Rs.Y.Balance = y.Add(yDeposit)
-
-		//lpBalance = sqrt(x*y)
-		lpBalance := sqrt(xDeposit.Mul(yDeposit))
-
-		fmt.Println("lpBalance = ", lpBalance)
-		p.PC.Balance = pc.Add(lpBalance)
-		lp = &token{
+		//pp == dp
+		p.Rs.X.Balance = rx.Add(dx)
+		p.Rs.Y.Balance = ry.Add(dy)
+		//rp = return lp
+		rp := sqrt(dx.Mul(dy))
+		p.PC.Balance = pc.Add(rp)
+		lp = token{
 			Name:    p.getPoolCoinName(),
-			Balance: lpBalance,
+			Balance: rp,
 		}
-	//poolPrice < depositPrice
+		return
+		//pp > dp
 	case 1:
-		fmt.Println("poolPrice < depositPrice")
-		//lpBalance = sqrt(x*y)
-
-		resultY := xDeposit.Mul(poolPrice)
-
-		lpBalance := sqrt(xDeposit.Mul(resultY))
-		p.Rs.X.Balance = x.Add(xDeposit)
-		p.Rs.Y.Balance = y.Add(resultY)
-		p.PC.Balance = pc.Add(lpBalance)
-		lp = &token{
-			Name:    p.getPoolCoinName(),
-			Balance: lpBalance,
+		// pp 가 1이상이면 나눠줘야하고 1미만이면 곱해줘야지 비율이 맞춰짐.
+		var tempY decimal.Decimal
+		one := decimal.NewFromInt(1)
+		if pp.Cmp(one) == 1 && dp.Cmp(one) == -1 {
+			tempY = dx.Mul(pp)
+		} else {
+			tempY = dx.Div(pp)
 		}
+
+		//만약 dy - tempY 가 음수라면 패닉일으켜야해.
+		//왜냐하면 필요한 y 가 더 크다는 뜻이니까.
+		if dy.Sub(tempY).Cmp(decimal.NewFromInt(0)) == -1 {
+			log.Panic("Send more token B")
+		}
+		// dy - tempY 는 환불해줘야함.
+		p.Rs.X.Balance = rx.Add(dx)
+		p.Rs.Y.Balance = ry.Add(tempY)
+		rp := sqrt(dx.Mul(tempY))
+		p.PC.Balance = pc.Add(rp)
+		lp = token{
+			Name:    p.getPoolCoinName(),
+			Balance: rp,
+		}
+		return
+		// pp < dp
+	case -1:
+		tempX := dy.Mul(pp)
+		if dx.Sub(tempX).Cmp(decimal.NewFromInt(0)) == -1 {
+			log.Panic("Send more token A")
+		}
+		p.Rs.X.Balance = rx.Add(tempX)
+		p.Rs.Y.Balance = ry.Add(dy)
+		rp := sqrt(dy.Mul(tempX))
+		lp = token{
+			Name:    p.getPoolCoinName(),
+			Balance: rp,
+		}
+		return
 	}
-	fmt.Println("----------------------")
-	return lp
+	return
 }
 
 func (p *Pool) WithDraw(lp token) (x, y token) {
 	if lp.Name != p.getPoolCoinName() {
 		log.Panic("not pool coin")
 	}
-	poolBalance := p.getPoolCoinBalance()
+	//pb = pool.Balance
+	pb := p.getPoolCoinBalance()
 	rx, ry := p.Reserve()
-	// (lp / poolBalance) *100
+	// (lp / pb) *100
 	// ex
 	// pool.balance = 1000
 	// lp = 10
 	// percent = 1
 	// (10/1000) * 100 = 1
-	lpBalance := lp.GetTokenBalance()
-	fmt.Println("lpBalance=", lpBalance)
-	percent := getPercent(lpBalance, poolBalance)
-	fmt.Println("percent =", percent)
+	//lb = send token(lp) balance
+	lb := lp.GetTokenBalance()
+
+	percent := getPercent(lb, pb)
+
 	//xPrice = x*percent / 100
 	//ex
 	//x = 1000
 	//percent = 1
 	//(x * percent) / 100 = 10
-	xPrice := getBalanceFromPercent(rx, percent)
-	fmt.Println("xPrice = ", xPrice)
-	yPrice := getBalanceFromPercent(ry, percent)
-	fmt.Println("yPrice=", yPrice)
+
+	//xb = will send x
+	xb := getBalanceFromPercent(rx, percent)
+
+	//yb =will send y
+	yb := getBalanceFromPercent(ry, percent)
+
 	xName, yName := p.getPairNameFromPool()
 	x = token{
 		Name:    xName,
-		Balance: xPrice,
+		Balance: xb,
 	}
 	y = token{
 		Name:    yName,
-		Balance: yPrice,
+		Balance: yb,
 	}
-	p.Rs.X.Balance = rx.Sub(xPrice)
-	p.Rs.Y.Balance = ry.Sub(yPrice)
-	p.PC.Balance = poolBalance.Sub(lpBalance)
-	return x, y
+	p.Rs.X.Balance = rx.Sub(xb)
+	p.Rs.Y.Balance = ry.Sub(yb)
+	p.PC.Balance = pb.Sub(lb)
+	return
 }
 
 func (p *Pool) Swap(t token) token {

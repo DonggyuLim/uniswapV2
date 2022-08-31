@@ -41,6 +41,13 @@ func (p *Pool) K() decimal.Decimal {
 	return z
 }
 
+// return x/y = price
+func (p *Pool) poolPrice() (price decimal.Decimal) {
+	x, y := p.Reserve()
+	price = x.Div(y)
+	return
+}
+
 // return PC.balance
 func (p *Pool) getPoolCoinBalance() decimal.Decimal {
 	return p.PC.Balance

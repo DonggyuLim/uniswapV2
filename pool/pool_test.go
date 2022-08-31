@@ -1,23 +1,27 @@
 package pool
 
 import (
-	"math/big"
 	"testing"
+
+	"github.com/shopspring/decimal"
 )
+
+var newInt = decimal.NewFromInt
+var newFloat = decimal.NewFromFloat
 
 func TestReserve(t *testing.T) {
 	tokenA := token{
 		Name:    "bitcoin",
-		Balance: big.NewFloat(10000),
+		Balance: newInt(10000),
 	}
 
 	tokenB := token{
 		Name:    "Atom",
-		Balance: big.NewFloat(200000),
+		Balance: newInt(200000),
 	}
 	pc := token{
 		Name:    "uni-ba",
-		Balance: big.NewFloat(44721),
+		Balance: newInt(44721),
 	}
 	pool := CreatePool(tokenA, tokenB, pc)
 	t.Run("Reserve offer reserve balance", func(t *testing.T) {
@@ -34,9 +38,9 @@ func TestReserve(t *testing.T) {
 
 func TestK(t *testing.T) {
 	type test struct {
-		x float64
-		y float64
-		k float64
+		x int64
+		y int64
+		k int64
 	}
 	tests := []test{
 		{
@@ -64,21 +68,21 @@ func TestK(t *testing.T) {
 
 		tokenA := token{
 			Name:    "bitcoin",
-			Balance: big.NewFloat(tc.x),
+			Balance: newInt(tc.x),
 		}
 
 		tokenB := token{
 			Name:    "Atom",
-			Balance: big.NewFloat(tc.y),
+			Balance: newInt(tc.y),
 		}
 		ps := token{
 			Name:    "uni-BA",
-			Balance: big.NewFloat(tc.k),
+			Balance: newInt(tc.k),
 		}
 		pool := CreatePool(tokenA, tokenB, ps)
 		got := pool.K()
 
-		if big.NewFloat(tc.k).Cmp(got) != 0 {
+		if newInt(tc.k).Cmp(got) != 0 {
 			t.Errorf("Expected %v and got %v", tc.k, got)
 		}
 	}

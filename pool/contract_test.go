@@ -1,18 +1,19 @@
 package pool
 
 import (
-	"math/big"
 	"testing"
+
+	"github.com/shopspring/decimal"
 )
 
 func TestDeposit(t *testing.T) {
 	type test struct {
-		px float64
-		py float64
+		px int64
+		py int64
 		pc float64
-		a  float64
-		b  float64
-		lp float64
+		a  int64
+		b  int64
+		lp int64
 	}
 	tests := []test{
 		{
@@ -24,52 +25,68 @@ func TestDeposit(t *testing.T) {
 			lp: 14,
 		},
 		{
-			px: 2000,
-			py: 4000,
-			pc: 2828,
-			a:  30,
-			b:  70,
-			lp: 45,
+			px: 3000,
+			py: 2000,
+			pc: 2449.48974278,
+			a:  100,
+			b:  300,
+			lp: 122,
 		},
 		{
-			px: 14123,
-			py: 1512312,
-			pc: 146145,
-			a:  141,
-			b:  15098,
-			lp: 1459,
+			px: 200,
+			py: 300,
+			pc: 244.948974278,
+			a:  10,
+			b:  30,
+			lp: 12,
 		},
-		// {
-		// 	px: 1011,
-		// 	py: 1203, //1.18 일때를 해결해야함 전부다 리팩토링?
-		// 	pc: 1102,
-		// 	a:  123,
-		// 	b:  10405,
-		// 	lp: 133,
-		// },
+		{
+			px: 300,
+			py: 200,
+			pc: 244.948974278,
+			a:  1000,
+			b:  300,
+			lp: 367,
+		},
+		{
+			px: 300,
+			py: 1000,
+			pc: 547.722557505,
+			a:  1000,
+			b:  2000,
+			lp: 1095,
+		},
+		{
+			px: 300,
+			py: 1000,
+			pc: 547.722557505,
+			a:  2000,
+			b:  1000,
+			lp: 547,
+		},
 	}
 	t.Run("Deposit", func(t *testing.T) {
 		for _, tc := range tests {
 			tokenA := token{
 				Name:    "bitcoin",
-				Balance: big.NewFloat(tc.px),
+				Balance: newInt(tc.px),
 			}
 
 			tokenB := token{
 				Name:    "Atom",
-				Balance: big.NewFloat(tc.py),
+				Balance: newInt(tc.py),
 			}
 			pc := token{
 				Name:    "uni-ba",
-				Balance: big.NewFloat(tc.pc),
+				Balance: decimal.NewFromFloat(tc.pc),
 			}
 			pool := CreatePool(tokenA, tokenB, pc)
-			tokenA.Balance = big.NewFloat(tc.a)
-			tokenB.Balance = big.NewFloat(tc.b)
+			tokenA.Balance = newInt(tc.a)
+			tokenB.Balance = newInt(tc.b)
 
-			pc.Balance = pool.Deposit(tokenA, tokenB).Balance
-			if pc.Balance.Cmp(big.NewFloat(tc.lp)) != 0 {
-				t.Errorf("Expected %v , got %s", tc.lp, pc.Balance)
+			pc = pool.Deposit(tokenA, tokenB)
+			if pc.Balance.Cmp(decimal.NewFromInt(tc.lp)) != 0 {
+				t.Errorf("Expected %v , got %v", tc.lp, pc.Balance.Abs())
 			}
 		}
 
@@ -79,30 +96,30 @@ func TestDeposit(t *testing.T) {
 
 func TestWithDraw(t *testing.T) {
 	type test struct {
-		px float64
-		py float64
+		px int64
+		py int64
 		pc float64
-		lp float64
+		lp int64
 		x  float64
 		y  float64
 	}
 
 	tests := []test{
 		{
-			px: 10000.00,
-			py: 20000.00,
-			pc: 14142.00,
-			lp: 1000.00,
-			x:  700.00,
-			y:  1400.00,
+			px: 10000,
+			py: 20000,
+			pc: 14142.1356237,
+			lp: 1000,
+			x:  707.106781188,
+			y:  1414.21356238,
 		},
 		{
 			px: 11113,
 			py: 20302,
-			pc: 15020,
+			pc: 15020.5234929,
 			lp: 351,
-			x:  222,
-			y:  406,
+			x:  259.688885135,
+			y:  474.417686133,
 		},
 	}
 
@@ -110,28 +127,28 @@ func TestWithDraw(t *testing.T) {
 		t.Run("TestWithDraw!", func(t *testing.T) {
 			tokenA := token{
 				Name:    "bitcoin",
-				Balance: big.NewFloat(tc.px),
+				Balance: newInt(tc.px),
 			}
 
 			tokenB := token{
 				Name:    "Atom",
-				Balance: big.NewFloat(tc.py),
+				Balance: newInt(tc.py),
 			}
 			pc := token{
 				Name:    "uni-ba",
-				Balance: big.NewFloat(tc.pc),
+				Balance: newFloat(tc.pc),
 			}
 			pool := CreatePool(tokenA, tokenB, pc)
 			lp := token{
 				Name:    "uni-ba",
-				Balance: big.NewFloat(tc.lp),
+				Balance: newInt(tc.lp),
 			}
 			x, y := pool.WithDraw(lp)
 
-			if big.NewFloat(tc.x).Cmp(x.Balance) != 0 {
+			if newFloat(tc.x).Cmp(x.Balance) != 0 {
 				t.Errorf("Expected %v got %v", tc.x, x.Balance)
 			}
-			if big.NewFloat(tc.y).Cmp(y.Balance) != 0 {
+			if newFloat(tc.y).Cmp(y.Balance) != 0 {
 				t.Errorf("Expected %v got %v", tc.y, y.Balance)
 			}
 		})
