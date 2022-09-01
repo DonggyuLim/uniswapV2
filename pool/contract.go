@@ -3,15 +3,11 @@ package pool
 import (
 	"log"
 
+	"github.com/DonggyuLim/uniswap/math"
 	"github.com/shopspring/decimal"
 )
 
 const fee = "0.03"
-
-type Lp struct {
-	lp       token
-	recipent token
-}
 
 // business logic
 // 난중에DB 업데이트해야함.
@@ -26,7 +22,7 @@ func (p *Pool) Deposit(tokenA, tokenB token) (lp token) {
 	pp := p.poolPrice()
 
 	//dp = Deposit Price
-	dp := price(dx, dy)
+	dp := math.Price(dx, dy)
 
 	pc := p.getPoolCoinBalance()
 
@@ -36,7 +32,7 @@ func (p *Pool) Deposit(tokenA, tokenB token) (lp token) {
 		p.Rs.X.Balance = rx.Add(dx)
 		p.Rs.Y.Balance = ry.Add(dy)
 		//rp = return lp
-		rp := sqrt(dx.Mul(dy))
+		rp := math.Sqrt(dx.Mul(dy))
 		p.PC.Balance = pc.Add(rp)
 		lp = token{
 			Name:    p.getPoolCoinName(),
@@ -62,7 +58,7 @@ func (p *Pool) Deposit(tokenA, tokenB token) (lp token) {
 		// dy - tempY 는 환불해줘야함.
 		p.Rs.X.Balance = rx.Add(dx)
 		p.Rs.Y.Balance = ry.Add(tempY)
-		rp := sqrt(dx.Mul(tempY))
+		rp := math.Sqrt(dx.Mul(tempY))
 		p.PC.Balance = pc.Add(rp)
 		lp = token{
 			Name:    p.getPoolCoinName(),
@@ -77,7 +73,7 @@ func (p *Pool) Deposit(tokenA, tokenB token) (lp token) {
 		}
 		p.Rs.X.Balance = rx.Add(tempX)
 		p.Rs.Y.Balance = ry.Add(dy)
-		rp := sqrt(dy.Mul(tempX))
+		rp := math.Sqrt(dy.Mul(tempX))
 		lp = token{
 			Name:    p.getPoolCoinName(),
 			Balance: rp,
@@ -103,7 +99,7 @@ func (p *Pool) WithDraw(lp token) (x, y token) {
 	//lb = send token(lp) balance
 	lb := lp.GetTokenBalance()
 
-	percent := getPercent(lb, pb)
+	percent := math.GetPercent(lb, pb)
 
 	//xPrice = x*percent / 100
 	//ex
@@ -112,10 +108,10 @@ func (p *Pool) WithDraw(lp token) (x, y token) {
 	//(x * percent) / 100 = 10
 
 	//xb = will send x
-	xb := getBalanceFromPercent(rx, percent)
+	xb := math.GetBalanceFromPercent(rx, percent)
 
 	//yb =will send y
-	yb := getBalanceFromPercent(ry, percent)
+	yb := math.GetBalanceFromPercent(ry, percent)
 
 	xName, yName := p.getPairNameFromPool()
 	x = token{
@@ -132,6 +128,7 @@ func (p *Pool) WithDraw(lp token) (x, y token) {
 	return
 }
 
+// fee 는 따로 데이터베이스 업데이트 해줘야함.
 func (p *Pool) Swap(t token) token {
 	xName, yName := p.getPairNameFromPool()
 	tName := t.Name

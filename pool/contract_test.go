@@ -13,7 +13,7 @@ func TestDeposit(t *testing.T) {
 		pc float64
 		a  int64
 		b  int64
-		lp int64
+		lp float64
 	}
 	tests := []test{
 		{
@@ -22,7 +22,7 @@ func TestDeposit(t *testing.T) {
 			pc: 282,
 			a:  10,
 			b:  20,
-			lp: 14,
+			lp: 14.142135623730951,
 		},
 		{
 			px: 3000,
@@ -30,7 +30,7 @@ func TestDeposit(t *testing.T) {
 			pc: 2449.48974278,
 			a:  100,
 			b:  300,
-			lp: 122,
+			lp: 122.47448713915891,
 		},
 		{
 			px: 200,
@@ -38,7 +38,7 @@ func TestDeposit(t *testing.T) {
 			pc: 244.948974278,
 			a:  10,
 			b:  30,
-			lp: 12,
+			lp: 12.24744871391589,
 		},
 		{
 			px: 300,
@@ -46,7 +46,7 @@ func TestDeposit(t *testing.T) {
 			pc: 244.948974278,
 			a:  1000,
 			b:  300,
-			lp: 367,
+			lp: 367.4234614174767,
 		},
 		{
 			px: 300,
@@ -54,7 +54,7 @@ func TestDeposit(t *testing.T) {
 			pc: 547.722557505,
 			a:  1000,
 			b:  2000,
-			lp: 1095,
+			lp: 1095.4451150103323,
 		},
 		{
 			px: 300,
@@ -62,7 +62,7 @@ func TestDeposit(t *testing.T) {
 			pc: 547.722557505,
 			a:  2000,
 			b:  1000,
-			lp: 547,
+			lp: 547.7225575051662,
 		},
 	}
 	t.Run("Deposit", func(t *testing.T) {
@@ -85,7 +85,7 @@ func TestDeposit(t *testing.T) {
 			tokenB.Balance = newInt(tc.b)
 
 			pc = pool.Deposit(tokenA, tokenB)
-			if pc.Balance.Cmp(decimal.NewFromInt(tc.lp)) != 0 {
+			if pc.Balance.Cmp(decimal.NewFromFloat(tc.lp)) != 0 {
 				t.Errorf("Expected %v , got %v", tc.lp, pc.Balance.Abs())
 			}
 		}
@@ -110,16 +110,16 @@ func TestWithDraw(t *testing.T) {
 			py: 20000,
 			pc: 14142.1356237,
 			lp: 1000,
-			x:  707.106781188,
-			y:  1414.21356238,
+			x:  707.106781188095,
+			y:  1414.21356237619,
 		},
 		{
 			px: 11113,
 			py: 20302,
 			pc: 15020.5234929,
-			lp: 351,
-			x:  259.688885135,
-			y:  474.417686133,
+			lp: 350,
+			x:  258.9490307603820541,
+			y:  473.0660687930600614,
 		},
 	}
 
