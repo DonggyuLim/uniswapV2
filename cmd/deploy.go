@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// go run main.go deploy --name="USDT" --symbol="USDT" --account="0x123" --totalbalance=100000
 // deployCmd represents the deploy command
 var deployCmd = &cobra.Command{
 	Use:   "deploy",

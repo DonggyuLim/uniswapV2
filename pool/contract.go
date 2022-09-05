@@ -97,7 +97,7 @@ func (p *Pool) WithDraw(lp token) (x, y token) {
 	// percent = 1
 	// (10/1000) * 100 = 1
 	//lb = send token(lp) balance
-	lb := lp.GetTokenBalance()
+	lb := lp.TokenBalance()
 
 	percent := math.GetPercent(lb, pb)
 
@@ -137,7 +137,7 @@ func (p *Pool) Swap(t token) token {
 	}
 
 	//This is what you want to swap balance of token
-	tB := t.GetTokenBalance()
+	tB := t.TokenBalance()
 
 	//x,y balance
 	rx, ry := p.Reserve()
