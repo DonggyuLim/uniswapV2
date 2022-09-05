@@ -2,6 +2,7 @@ package db
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"sync"
 
@@ -13,31 +14,36 @@ type DB struct {
 }
 
 var once sync.Once
-var td *DB
+var db *DB
 
-func newDB() *DB {
+func NewDB(dbname string) *DB {
 	once.Do(func() {
 		var err error
-		td := new(DB)
-		td.db, err = badger.Open(badger.DefaultOptions("/tmp/token"))
+		dbPointer := new(DB)
+		dbname = fmt.Sprintf("./database/%s", dbname)
+		dbPointer.db, err = badger.Open(badger.DefaultOptions(dbname))
 		if err != nil {
 			log.Fatal(err)
 		}
+		db = dbPointer
 	})
-	return td
+	return db
+}
+func Close() {
+	db.db.Close()
 }
 
-func (td *DB) Add(key string, value []byte) {
-	td.db.Update(func(txn *badger.Txn) error {
+func (db *DB) Add(key string, value []byte) {
+	db.db.Update(func(txn *badger.Txn) error {
 		txn.Set([]byte(key), []byte(value))
 		return nil
 	})
 }
 
-func (td *DB) Get(key string) ([]byte, bool) {
+func (db *DB) Get(key string) ([]byte, bool) {
 	var buf bytes.Buffer
 	ok := false
-	err := td.db.View(func(txn *badger.Txn) error {
+	err := db.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(key))
 		if err == nil {
 			item.Value(func(val []byte) error {
@@ -54,8 +60,8 @@ func (td *DB) Get(key string) ([]byte, bool) {
 	return buf.Bytes(), ok
 }
 
-func (td *DB) Remove(key string) {
-	td.db.Update(func(txn *badger.Txn) error {
+func (db *DB) Remove(key string) {
+	db.db.Update(func(txn *badger.Txn) error {
 		txn.Delete([]byte(key))
 		return nil
 	})
