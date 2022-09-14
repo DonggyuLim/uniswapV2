@@ -1,68 +1,110 @@
 package db
 
 import (
-	"bytes"
-	"fmt"
 	"log"
-	"sync"
 
-	"github.com/dgraph-io/badger/v3"
+	bolt "go.etcd.io/bbolt"
 )
 
-type DB struct {
-	db *badger.DB
-}
+const (
+	dbName  = "Uniswap"
+	factory = "factory"
+)
 
-var once sync.Once
-var db *DB
+var db *bolt.DB
 
-func NewDB(dbname string) *DB {
-	once.Do(func() {
-		var err error
-		dbPointer := new(DB)
-		dbname = fmt.Sprintf("./database/%s", dbname)
-		dbPointer.db, err = badger.Open(badger.DefaultOptions(dbname))
+func NewDB() {
+	if db == nil {
+		dbPointer, err := bolt.Open(dbName, 0600, nil)
 		if err != nil {
 			log.Fatal(err)
 		}
 		db = dbPointer
-	})
-	return db
-}
-func Close() {
-	db.db.Close()
-}
-
-func (db *DB) Add(key string, value []byte) {
-	db.db.Update(func(txn *badger.Txn) error {
-		txn.Set([]byte(key), []byte(value))
-		return nil
-	})
-}
-
-func (db *DB) Get(key string) ([]byte, bool) {
-	var buf bytes.Buffer
-	ok := false
-	err := db.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(key))
-		if err == nil {
-			item.Value(func(val []byte) error {
-				buf.Write(val)
-				ok = true
-				return nil
-			})
+		err = db.Update(func(tx *bolt.Tx) error {
+			_, err := tx.CreateBucketIfNotExists([]byte(factory))
+			return err
+		})
+		if err != nil {
+			log.Fatal(err)
 		}
+	}
+
+}
+
+func Close() {
+	db.Close()
+}
+
+func Add(bucketName, key string, value []byte) error {
+	err := db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(bucketName))
+		err := bucket.Put([]byte(key), value)
+		return err
+	})
+
+	return err
+}
+
+func Get(bucketName, key string) ([]byte, error) {
+	var data []byte
+	err := db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(bucketName))
+		data = bucket.Get([]byte(key))
 		return nil
 	})
 	if err != nil {
-		log.Fatal(err)
+		return data, err
 	}
-	return buf.Bytes(), ok
+	return data, nil
 }
 
-func (db *DB) Remove(key string) {
-	db.db.Update(func(txn *badger.Txn) error {
-		txn.Delete([]byte(key))
-		return nil
+func Remove(bucketName, key string) error {
+	err := db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(bucketName))
+		err := bucket.Delete([]byte(key))
+		return err
 	})
+	return err
 }
+
+func RemoveBucket(bucketName string) error {
+	err := db.Update(func(tx *bolt.Tx) error {
+		err := tx.DeleteBucket([]byte(bucketName))
+		return err
+	})
+	return err
+}
+
+// func Add(key string, value []byte) {
+// 	db.Update(func(txn *bolt.Tx) error {
+// 		bucket := txn.Bucket([]byte())
+// 		err := bucket.Put([]byte)
+// 	})
+// }
+
+// func Get(key string) ([]byte, bool) {
+// 	var buf bytes.Buffer
+// 	ok := false
+// 	err := db.View(func(txn *badger.Txn) error {
+// 		item, err := txn.Get([]byte(key))
+// 		if err == nil {
+// 			item.Value(func(val []byte) error {
+// 				buf.Write(val)
+// 				ok = true
+// 				return nil
+// 			})
+// 		}
+// 		return nil
+// 	})
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	return buf.Bytes(), ok
+// }
+
+// func Remove(key string) {
+// 	db.Update(func(txn *badger.Txn) error {
+// 		txn.Delete([]byte(key))
+// 		return nil
+// 	})
+// }
