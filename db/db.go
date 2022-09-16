@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	dbName  = "Uniswap"
+	dbName  = "./database/Uniswap"
 	factory = "factory"
 )
 
