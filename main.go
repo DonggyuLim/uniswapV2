@@ -4,11 +4,17 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package main
 
 import (
-	"github.com/DonggyuLim/uniswap/cmd"
+	"sync"
+
+	"github.com/DonggyuLim/uniswap/db"
+	"github.com/DonggyuLim/uniswap/rest"
 )
 
 func main() {
-
-	cmd.Execute()
-
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
+	db.NewDB()
+	defer db.Close()
+	go rest.Rest(wg)
+	wg.Wait()
 }

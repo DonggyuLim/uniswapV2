@@ -1,0 +1,22 @@
+###
+http://localhost:8080
+
+
+###
+
+POST http://localhost:8080/createPair HTTP/1.1
+Content-Type: "application/json"
+
+
+{
+    "AToken":{
+        "name":"USDT",
+        "balance":10,
+        "address":"0xb"
+    },
+    "BToken":{
+        "name":"WETH",
+        "balance":20,
+        "address":"0xb"
+    }
+}

@@ -17,18 +17,19 @@ func NewDB() {
 	if db == nil {
 		dbPointer, err := bolt.Open(dbName, 0600, nil)
 		if err != nil {
+
 			log.Fatal(err)
 		}
 		db = dbPointer
 		err = db.Update(func(tx *bolt.Tx) error {
-			_, err := tx.CreateBucketIfNotExists([]byte(factory))
+			_, err := tx.CreateBucketIfNotExists([]byte("pair"))
 			return err
 		})
 		if err != nil {
 			log.Fatal(err)
+
 		}
 	}
-
 }
 
 func Close() {
@@ -37,11 +38,13 @@ func Close() {
 
 func Add(bucketName, key string, value []byte) error {
 	err := db.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(bucketName))
-		err := bucket.Put([]byte(key), value)
+		bucket, err := tx.CreateBucketIfNotExists([]byte(bucketName))
+		if err != nil {
+			return err
+		}
+		err = bucket.Put([]byte(key), value)
 		return err
 	})
-
 	return err
 }
 

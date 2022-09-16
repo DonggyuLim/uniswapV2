@@ -7,7 +7,6 @@ import (
 )
 
 func Price(x, y decimal.Decimal) (price decimal.Decimal) {
-
 	price = x.Div(y)
 	return price
 }
@@ -26,7 +25,8 @@ func GetBalanceFromPercent(tv, percent decimal.Decimal) decimal.Decimal {
 
 // sqrt return not exact value.....
 func Sqrt(x decimal.Decimal) decimal.Decimal {
-	xF := x.InexactFloat64()
+	xF, _ := x.BigFloat().Float64()
+
 	// xF := x.BigFloat()
 	// sqrt, _ := xF.Sqrt(xF).Float64()
 	sqrt := math.Sqrt(xF)

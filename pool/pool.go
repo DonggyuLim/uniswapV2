@@ -4,32 +4,50 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// return x/y or y/x or 1
+const fee = "0.03"
 
-type reserve struct {
-	X token
-	Y token
+// return x/y or y/x or 1
+type Token struct {
+	Name    string          `json:"name"`
+	Balance decimal.Decimal `json:"balance"`
+	Address string          `json:"address"`
+}
+
+func (t *Token) GetBalance() decimal.Decimal {
+	return t.Balance
+}
+
+func (t *Token) TokenName() string {
+	return t.Name
 }
 
 type Pool struct {
-	Rs reserve
-	PC token
+	Name string
+	Fee  decimal.Decimal
+	X    Token
+	Y    Token
+	LP   poolToken
 }
 
-func CreatePool(tokenA, tokenB, pc token) *Pool {
-	return &Pool{
-		Rs: reserve{
-			X: tokenA,
-			Y: tokenB,
-		},
-		PC: pc,
+func CreatePool(tokenA, tokenB Token, lp poolToken) Pool {
+	fee, _ := decimal.NewFromString(fee)
+	return Pool{
+
+		X:   tokenA,
+		Y:   tokenB,
+		Fee: fee,
+		LP:  lp,
 	}
+}
+
+func (p *Pool) GetName() string {
+	return p.Name
 }
 
 // return reserved coin
 func (p *Pool) Reserve() (x, y decimal.Decimal) {
-	x = p.Rs.X.Balance
-	y = p.Rs.Y.Balance
+	x = p.X.Balance
+	y = p.Y.Balance
 	return
 }
 
@@ -49,17 +67,16 @@ func (p *Pool) poolPrice() (price decimal.Decimal) {
 }
 
 // return PC.balance
-func (p *Pool) getPoolCoinBalance() decimal.Decimal {
-	return p.PC.Balance
-}
+// func (p *Pool) getPoolCoinBalance() decimal.Decimal {
+// 	return p.PC.Balance
+// }
 
 // return pc name
-func (p *Pool) getPoolCoinName() string {
-	return p.PC.Name
+func (p *Pool) getLPname() string {
+	return p.LP.GetName()
 }
 
 // return reserve coin name
 func (p *Pool) getPairNameFromPool() (string, string) {
-	reserve := p.Rs
-	return reserve.X.Name, reserve.Y.Name
+	return p.X.Name, p.Y.Name
 }
