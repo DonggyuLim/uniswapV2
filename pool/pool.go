@@ -1,47 +1,66 @@
 package pool
 
 import (
+	"github.com/DonggyuLim/uniswap/utils"
 	"github.com/shopspring/decimal"
 )
 
-const fee = "0.03"
+const feeRate = "0.0003"
 
-// return x/y or y/x or 1
 type Token struct {
 	Name    string          `json:"name"`
 	Balance decimal.Decimal `json:"balance"`
-	Address string          `json:"address"`
+	Account string          `json:"address"`
 }
 
 func (t *Token) GetBalance() decimal.Decimal {
 	return t.Balance
 }
 
-func (t *Token) TokenName() string {
+func (t *Token) GetAddress() string {
+	return t.Account
+}
+
+func (t *Token) GetTokenName() string {
 	return t.Name
 }
 
 type Pool struct {
-	Name string
-	Fee  decimal.Decimal
-	X    Token
-	Y    Token
-	LP   poolToken
+	Name    string
+	FeeRate decimal.Decimal
+	XFee    decimal.Decimal
+	YFee    decimal.Decimal
+	X       Token
+	Y       Token
+	LP      poolToken
 }
 
 func CreatePool(tokenA, tokenB Token, lp poolToken) Pool {
-	fee, _ := decimal.NewFromString(fee)
+	feeRate, _ := decimal.NewFromString(feeRate)
+	zero := decimal.NewFromInt(0)
 	return Pool{
-
-		X:   tokenA,
-		Y:   tokenB,
-		Fee: fee,
-		LP:  lp,
+		Name:    utils.GetKey(tokenA.GetTokenName(), tokenB.GetTokenName()),
+		X:       tokenA,
+		Y:       tokenB,
+		XFee:    zero,
+		YFee:    zero,
+		FeeRate: feeRate,
+		LP:      lp,
 	}
 }
 
 func (p *Pool) GetName() string {
 	return p.Name
+}
+
+func (p *Pool) GetXName() string {
+	return p.X.Name
+}
+func (p *Pool) GetYName() string {
+	return p.Y.Name
+}
+func (p *Pool) GetFeeRate() decimal.Decimal {
+	return p.FeeRate
 }
 
 // return reserved coin
@@ -72,7 +91,7 @@ func (p *Pool) poolPrice() (price decimal.Decimal) {
 // }
 
 // return pc name
-func (p *Pool) getLPname() string {
+func (p *Pool) GetLPname() string {
 	return p.LP.GetName()
 }
 

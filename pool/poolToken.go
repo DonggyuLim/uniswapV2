@@ -34,7 +34,7 @@ func NewPoolToken(name, symbol string, dec uint8) poolToken {
 	}
 }
 
-func (t *poolToken) ShareFee() {
+func (t *poolToken) ShareFee(tokenAName, tokenBName, poolName string) {
 	feeBalance := t.BalanceOf("0x")
 	for k, v := range t.Balance {
 		//
@@ -43,7 +43,11 @@ func (t *poolToken) ShareFee() {
 		} else {
 			percent := math.GetPercent(v, t.TotalSupply)
 			offerBalance := math.GetBalanceFromPercent(feeBalance, percent)
-			t.Balance[k] = t.BalanceOf(k).Add(offerBalance)
+			err := sendApprove(tokenAName, k, poolName, offerBalance)
+			if err != nil {
+				panic(err)
+			}
+
 		}
 	}
 }
@@ -105,6 +109,7 @@ func (t *poolToken) Approve(owner, spender string, amount decimal.Decimal) error
 		return err
 	}
 	t.approve(owner, spender, amount)
+
 	return nil
 }
 
@@ -112,29 +117,38 @@ func (t *poolToken) approve(owner, spender string, amount decimal.Decimal) error
 
 	key := owner + ":" + spender
 	currentBalance := t.Allowances[key]
+	t.Balance[owner] = t.BalanceOf(owner).Sub(amount)
 	t.Allowances[key] = currentBalance.Add(amount)
 	return nil
 }
 
-func (t *poolToken) TransferFrom(from, to, spender string, amount decimal.Decimal) error {
-	if err := t.checkspendAllowance(from, spender, amount); err != nil {
+func (t *poolToken) TransferFrom(owner, spender, to string, amount decimal.Decimal) error {
+	if err := t.checkspendAllowance(owner, spender, amount); err != nil {
 		return err
 	}
-	t.transfer(from, to, amount)
+	t.transferfrom(owner, spender, to, amount)
 	return nil
+}
+func (t *poolToken) transferfrom(owner, spender, to string, amount decimal.Decimal) {
+	key := owner + ":" + spender
+	t.Balance[to] = t.BalanceOf(spender).Add(amount)
+	t.Allowances[key] = t.allowance(owner, spender).Sub(amount)
+	zero := decimal.NewFromInt(0)
+	if t.Allowances[key].Cmp(zero) != 1 {
+		delete(t.Allowances, key)
+	}
+
 }
 
 func (t *poolToken) Mint(account string, amount decimal.Decimal) {
+
 	t.mint(account, amount)
 }
 
 func (t *poolToken) mint(address string, amount decimal.Decimal) {
 
 	t.TotalSupply = t.TotalSupply.Add(amount)
-	currentBalance := t.BalanceOf(address)
-	// newBalance := currentBalance + amount
-	newBalance := currentBalance.Add(amount)
-	t.Balance[address] = newBalance
+	t.Balance[address] = t.BalanceOf(address).Add(amount)
 }
 
 func (t *poolToken) Burn(address string, amount decimal.Decimal) {

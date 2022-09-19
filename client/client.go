@@ -3,6 +3,8 @@ package client
 import (
 	"context"
 	"log"
+	"sync"
+	"time"
 
 	pb "github.com/DonggyuLim/grc20/protos/RPC"
 	u "github.com/DonggyuLim/uniswap/utils"
@@ -10,33 +12,47 @@ import (
 	"google.golang.org/grpc"
 )
 
-type Client struct {
-	client pb.RPCClient
-}
+const serviceHost = "localhost:9001"
 
 var (
-	cli *Client
-	ctx context.Context
+	once sync.Once
 )
 
-const serviceHost = "localhost:9000"
+type client struct {
+	client pb.RPCClient
+	conn   *grpc.ClientConn
+}
 
-func GetRPCClient() *Client {
+var cli *client
 
-	if cli == nil {
+func StartClient(wg *sync.WaitGroup) {
+	once.Do(func() {
 		conn, err := grpc.Dial(serviceHost, grpc.WithInsecure(), grpc.WithBlock())
 		if err != nil {
 			log.Fatalf("did not connect: %v", err)
 		}
-		cli = &Client{
-			client: pb.NewRPCClient(conn),
+		c := pb.NewRPCClient(conn)
+		cli = &client{
+			conn:   conn,
+			client: c,
 		}
-	}
+
+	})
+
+	defer wg.Done()
+
+}
+
+func GetClient() *client {
 	return cli
 }
 
-func (c *Client) GetBalance(tokenName, account string) (decimal.Decimal, error) {
-	ctx, cancel := context.WithCancel(context.Background())
+func (c *client) CloseConn() {
+	c.conn.Close()
+}
+
+func (c *client) GetBalance(tokenName, account string) (decimal.Decimal, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	res, err := c.client.GetBalance(ctx, &pb.GetBalanceRequest{
 		TokenName: tokenName,
@@ -48,8 +64,8 @@ func (c *Client) GetBalance(tokenName, account string) (decimal.Decimal, error) 
 	return u.NewDecimalFromUint(res.GetBalance()), nil
 }
 
-func (c *Client) TokenInfo(tokenName string) (*pb.TokenInfoResponse, error) {
-	ctx, cancel := context.WithCancel(context.Background())
+func (c *client) TokenInfo(tokenName string) (*pb.TokenInfoResponse, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	res, err := c.client.GetTokenInfo(ctx, &pb.TokenInfoRequest{
 		TokenName: tokenName,
@@ -60,8 +76,8 @@ func (c *Client) TokenInfo(tokenName string) (*pb.TokenInfoResponse, error) {
 	return res, nil
 }
 
-func (c *Client) Allowance(tokenName, owner, spender string) (decimal.Decimal, error) {
-	ctx, cancel := context.WithCancel(context.Background())
+func (c *client) Allowance(tokenName, owner, spender string) (decimal.Decimal, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	res, err := c.client.GetAllowance(ctx, &pb.AllowanceRequest{
 		TokenName: tokenName,
@@ -74,8 +90,8 @@ func (c *Client) Allowance(tokenName, owner, spender string) (decimal.Decimal, e
 	return u.NewDecimalFromUint(res.GetAllowance()), nil
 }
 
-func (c *Client) Approve(tokenName, owner, spender string, amount uint64) (*pb.ApproveResponse, error) {
-	ctx, cancel := context.WithCancel(context.Background())
+func (c *client) Approve(tokenName, owner, spender string, amount uint64) (*pb.ApproveResponse, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	res, err := c.client.Approve(ctx, &pb.ApproveRequest{
 		TokenName: tokenName,
@@ -89,14 +105,14 @@ func (c *Client) Approve(tokenName, owner, spender string, amount uint64) (*pb.A
 	return res, nil
 }
 
-func (c *Client) TransferFrom(tokenName, from, to, spender string, amount uint64) (*pb.TransferFromResponse, error) {
-	ctx, cancel := context.WithCancel(context.Background())
+func (c *client) TransferFrom(tokenName, owner, spender, to string, amount uint64) (*pb.TransferFromResponse, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	res, err := c.client.TransferFrom(ctx, &pb.TransferFromRequest{
 		TokenName: tokenName,
-		From:      from,
-		To:        to,
 		Spender:   spender,
+		Owner:     owner,
+		To:        to,
 		Amount:    amount,
 	})
 	if err != nil {
@@ -105,15 +121,16 @@ func (c *Client) TransferFrom(tokenName, from, to, spender string, amount uint64
 	return res, nil
 }
 
-func (c *Client) Transfer(tokenName, to, from string, amount uint64) (*pb.TransferResponse, error) {
-	ctx, cancel := context.WithCancel(context.Background())
+func (c *client) Transfer(tokenName, from, to string, amount uint64) (*pb.TransferResponse, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	res, err := c.client.Transfer(ctx, &pb.TransferRequest{
 		TokenName: tokenName,
-		To:        to,
 		From:      from,
+		To:        to,
 		Amount:    amount,
 	})
+
 	if err != nil {
 		return &pb.TransferResponse{}, err
 	}

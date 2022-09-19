@@ -2,6 +2,7 @@ package pool
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/DonggyuLim/uniswap/math"
 	"github.com/shopspring/decimal"
@@ -30,28 +31,27 @@ import (
 
 // 위의 공식은 x 가 될수도 y 가 될 수도 있음.
 // 더 작은 쪽으로 LP 토큰 제공.
-func (p *Pool) mintLP(address string, dx, dy decimal.Decimal) {
+func (p *Pool) mintLP(account string, dx, dy decimal.Decimal) {
 
 	one := decimal.NewFromInt(0)
 	if p.LP.GetTotalSupply().Cmp(one) != 1 {
 
 		LP := math.Sqrt(dx.Mul(dy))
-		p.LP.Mint(address, LP)
-		return
+		p.LP.Mint(account, LP)
 	} else {
-
 		caseX := dx.Div(p.X.GetBalance()).Mul(p.LP.GetTotalSupply())
 		caseY := dy.Div(p.Y.GetBalance()).Mul(p.LP.GetTotalSupply())
 		switch caseX.Cmp(caseY) {
 		case -1:
-			p.LP.Mint(address, caseX)
+			p.LP.Mint(account, caseX)
 		case 0, 1:
-			p.LP.Mint(address, caseY)
+			p.LP.Mint(account, caseY)
 		}
 	}
+
 }
 
-func (p *Pool) Deposit(address string, tokenA, tokenB Token) error {
+func (p *Pool) Deposit(account string, tokenX, tokenY Token) error {
 
 	//현재 저장되어 있는 X,Y 토큰 수량
 	rx, ry := p.Reserve()
@@ -61,12 +61,12 @@ func (p *Pool) Deposit(address string, tokenA, tokenB Token) error {
 	//!!!!!!!!!!!!
 	//dx,dy 가 있는지 확인해야함.
 
-	dx, dy := tokenA.GetBalance(), tokenB.GetBalance()
+	dx, dy := tokenX.GetBalance(), tokenY.GetBalance()
 
 	//balance check
-	// address,amount -> grc20
+	// account,amount -> grc20
 	// amount > balance = err
-	err := depositBalanceCheck(address, tokenA, tokenB)
+	err := grc20TwoBalanceCheck(account, tokenX, tokenY)
 	if err != nil {
 		return err
 	}
@@ -85,21 +85,24 @@ func (p *Pool) Deposit(address string, tokenA, tokenB Token) error {
 		// pp == dp
 
 		//grpc에 approve 호출해야함.
-		err = sendApprove(tokenA.TokenName(), address, dx)
+
+		err := p.desposit(tokenX.GetTokenName(), account, dx)
 		if err != nil {
 			return err
 		}
-		err = sendApprove(tokenB.TokenName(), address, dy)
+		err = p.desposit(tokenY.GetTokenName(), account, dy)
+		// err = sendApprove(tokenY.GetTokenName(), account, p.GetName(), dy)
 		if err != nil {
 			return err
 		}
 
 		//풀 토큰 발행
-		p.mintLP(address, dx, dy)
+		p.mintLP(account, dx, dy)
 		p.X.Balance = rx.Add(dx)
 		p.Y.Balance = ry.Add(dy)
 		return nil
 	case 1:
+		fmt.Println("Case1")
 		// pp 가 1이상이면 나눠줘야하고 1미만이면 곱해줘야 비율이 맞춰짐.
 		var tempY decimal.Decimal
 		one := decimal.NewFromInt(1)
@@ -116,43 +119,46 @@ func (p *Pool) Deposit(address string, tokenA, tokenB Token) error {
 		}
 
 		//grpc에 approve 호출해야함.
+		err = p.desposit(tokenX.GetTokenName(), account, dx)
 
-		err = sendApprove(tokenA.TokenName(), address, dx)
 		if err != nil {
 			return err
 		}
-		err = sendApprove(tokenB.TokenName(), address, tempY)
+
+		err = p.desposit(tokenX.GetTokenName(), account, tempY)
 		if err != nil {
 			return err
 		}
-		p.mintLP(address, dx, tempY)
+		p.mintLP(account, dx, tempY)
 		p.X.Balance = rx.Add(dx)
 		p.Y.Balance = ry.Add(tempY)
 	case -1:
-		tempX := dx.Mul(pp)
-		one := decimal.NewFromInt(1)
-		if dx.Sub(tempX).Cmp(one) == -1 {
+		fmt.Println("Case-1")
+		//pp < dp
 
-			err = sendApprove(tokenA.TokenName(), address, tempX)
-			if err != nil {
-				return err
-			}
-			err = sendApprove(tokenB.TokenName(), address, dy)
-			if err != nil {
-				return err
-			}
-			p.mintLP(address, tempX, dy)
-			p.X.Balance = rx.Add(tempX)
-			p.Y.Balance = ry.Add(dy)
+		tempX := dy.Mul(pp)
+
+		err = p.desposit(tokenX.GetTokenName(), account, tempX)
+		if err != nil {
+			return err
 		}
+		err = p.desposit(tokenX.GetTokenName(), account, dy)
+
+		if err != nil {
+			return err
+		}
+		p.mintLP(account, tempX, dy)
+		p.X.Balance = rx.Add(tempX)
+		p.Y.Balance = ry.Add(dy)
+
 	}
 	return nil
 }
 
-func (p *Pool) WithDraw(address string, amount decimal.Decimal) error {
+func (p *Pool) WithDraw(account string, amount decimal.Decimal) error {
 
-	//address balance
-	ab := p.LP.BalanceOf(address)
+	//account balance
+	ab := p.LP.BalanceOf(account)
 	err := lpCheckBalance(ab, amount)
 	if err != nil {
 		return err
@@ -168,22 +174,22 @@ func (p *Pool) WithDraw(address string, amount decimal.Decimal) error {
 	yb := math.GetBalanceFromPercent(ry, percent)
 
 	//grc20 데이터 베이스에 보내줘야함.
-	err = sendTransferFrom(p.X.Name, p.GetName(), address, p.GetName(), xb)
+	err = sendTransfer(p.X.Name, p.GetName(), account, xb)
 	if err != nil {
 		return err
 	}
-	err = sendTransferFrom(p.Y.Name, p.GetName(), address, p.GetName(), yb)
+	err = sendTransfer(p.Y.Name, p.GetName(), account, yb)
 	if err != nil {
 		return err
 	}
 	p.X.Balance = rx.Sub(xb)
 	p.Y.Balance = ry.Sub(yb)
-	p.LP.Burn(address, amount)
+	p.LP.Burn(account, amount)
 	return nil
 }
 
 // token = 교환할 토큰
-func (p *Pool) Swap(token, address string, amount decimal.Decimal) error {
+func (p *Pool) Swap(tokenName, account string, amount decimal.Decimal) error {
 	//스왑가격 결정 방법
 	//X = 10 Y = 100 k = 1000
 	// 한개의 X 를 보내면 얼마만큼의 Y 를 받을 수 있을까?
@@ -196,40 +202,59 @@ func (p *Pool) Swap(token, address string, amount decimal.Decimal) error {
 	//그러니까 원래 Y 에서 90.9090909091 가 되는 토큰 수량 만큼 보내주면된다.
 	// 그리고 여기서 0.3 %를 때고 제공을 해준다.
 
+	//checkingbalance
+	err := grc20CheckBalance(tokenName, account, amount)
+	if err != nil {
+		return err
+	}
 	//pool X,Y balance
 	rx, ry := p.Reserve()
 
-	//Price
 	k := p.K()
 
 	xName, yName := p.getPairNameFromPool()
-	if token == xName {
+	//approve 를 제공 받고
+	//allowance 확인을 하고
+	//transferfrom 으로 balance 로 데이터 이동 시킨후
+	//받고싶어하는 코인을 보내주면됨.
+	if tokenName == xName {
 		//+rx   -ry
+		fmt.Println(tokenName)
 		rx = rx.Add(amount)
 		sendY := ry.Sub(k.Div(rx))
+		fmt.Println("sendY=======", sendY)
 		//fee 는 어디다 모아둘까?
-		fee := sendY.Mul(p.Fee)
-		p.LP.Balance["0"] = p.LP.Balance["0"].Add(fee)
+
+		fee := sendY.Mul(math.GetBalanceFromPercent(sendY, p.FeeRate))
+		fmt.Println("fee=======", fee)
 		sendY = sendY.Sub(fee)
-		err := sendTransferFrom(yName, p.GetName(), address, p.GetName(), sendY)
+		err := p.swap(xName, yName, account, amount, sendY)
+		if err != nil {
+			return err
+		}
 
 		if err != nil {
 			return err
 		}
+		//fee 는 풀에서 데이터로 저장하고 잇다가 approve 해줘서 넘겨주면 될듯
+		//x 토큰을 받았으니 y 토큰 피를 올려줘야함.
+		p.YFee = p.XFee.Add(fee)
 		p.X.Balance = rx
 		p.Y.Balance = ry.Sub(sendY)
-
 		return nil
 	} else {
+		fmt.Println(tokenName)
 		//-rx   ry+
 		ry = ry.Add(amount)
 		sendX := rx.Sub(k.Div(ry))
-		fee := sendX.Mul(p.Fee)
+
+		fee := sendX.Mul(math.GetBalanceFromPercent(sendX, p.FeeRate))
 		sendX = sendX.Sub(fee)
-		err := sendTransferFrom(xName, p.GetName(), address, p.GetName(), sendX)
+		err := p.swap(yName, xName, account, amount, sendX)
 		if err != nil {
 			return err
 		}
+		p.XFee = p.XFee.Add(fee)
 		p.X.Balance = rx.Sub(sendX)
 		p.Y.Balance = ry
 		return nil

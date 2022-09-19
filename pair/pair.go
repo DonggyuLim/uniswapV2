@@ -1,11 +1,14 @@
 package pair
 
 import (
+	"bytes"
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"sort"
 	"strings"
 
+	"github.com/DonggyuLim/uniswap/client"
 	"github.com/DonggyuLim/uniswap/db"
 	"github.com/DonggyuLim/uniswap/pool"
 	"github.com/DonggyuLim/uniswap/utils"
@@ -43,11 +46,18 @@ func CreatePair(tokenA, tokenB pool.Token) (Pair, error) {
 		Name: key,
 		Pool: pool.CreatePool(tokenA, tokenB, pc),
 	}
-	err = p.Pool.Deposit(tokenA.Address, tokenA, tokenB)
+	b, err := client.GetClient().GetBalance("USDT", "0xb")
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("balance----------------", b)
 	if err != nil {
 		return Pair{}, err
 	}
-	db.Add("pair", p.GetName(), utils.DataToByte(p))
+	err = db.Add("pair", p.GetName(), utils.DataToByte(p))
+	if err != nil {
+		return Pair{}, err
+	}
 	return p, nil
 }
 
@@ -75,4 +85,14 @@ func getSymbol(a, b string) string {
 	bslice := strings.Split(b, "")
 	result := fmt.Sprintf("%sN%sLP", aslice[0], bslice[0])
 	return result
+}
+
+func ByteToPair(data []byte) (Pair, error) {
+	var pair Pair
+	decoder := gob.NewDecoder(bytes.NewBuffer((data)))
+	err := decoder.Decode(&pair)
+	if err != nil {
+		return pair, err
+	}
+	return pair, nil
 }
