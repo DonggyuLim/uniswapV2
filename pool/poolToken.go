@@ -3,7 +3,7 @@ package pool
 import (
 	"errors"
 
-	"github.com/DonggyuLim/uniswap/math"
+	u "github.com/DonggyuLim/uniswap/utils"
 	"github.com/shopspring/decimal"
 )
 
@@ -15,12 +15,6 @@ type poolToken struct {
 	Balance     map[string]decimal.Decimal
 	Allowances  map[string]decimal.Decimal
 }
-
-// type address string
-
-// func StringToAddress(data string) address {
-// 	return address(data)
-// }
 
 func NewPoolToken(name, symbol string, dec uint8) poolToken {
 	bm := make(map[string]decimal.Decimal)
@@ -41,8 +35,8 @@ func (t *poolToken) ShareFee(tokenAName, tokenBName, poolName string) {
 		if k == "0x" {
 			continue
 		} else {
-			percent := math.GetPercent(v, t.TotalSupply)
-			offerBalance := math.GetBalanceFromPercent(feeBalance, percent)
+			percent := u.GetPercent(v, t.TotalSupply)
+			offerBalance := u.GetBalanceFromPercent(feeBalance, percent)
 			err := sendApprove(tokenAName, k, poolName, offerBalance)
 			if err != nil {
 				panic(err)
@@ -83,9 +77,6 @@ func (t *poolToken) allowance(owner, spender string) decimal.Decimal {
 }
 
 // /////////////////////////////////////////////////
-// /////////////////////////////////////////////////
-// /////////////////////////////////////////////////
-// /////////////////////////////////////////////////
 // Mutate
 
 func (t *poolToken) Transfer(from, to string, amount decimal.Decimal) error {
@@ -96,6 +87,7 @@ func (t *poolToken) Transfer(from, to string, amount decimal.Decimal) error {
 	t.transfer(from, to, amount)
 	return nil
 }
+
 func (t *poolToken) transfer(from, to string, amount decimal.Decimal) {
 
 	fromBalance := t.Balance[from]
@@ -129,6 +121,7 @@ func (t *poolToken) TransferFrom(owner, spender, to string, amount decimal.Decim
 	t.transferfrom(owner, spender, to, amount)
 	return nil
 }
+
 func (t *poolToken) transferfrom(owner, spender, to string, amount decimal.Decimal) {
 	key := owner + ":" + spender
 	t.Balance[to] = t.BalanceOf(spender).Add(amount)
@@ -137,7 +130,6 @@ func (t *poolToken) transferfrom(owner, spender, to string, amount decimal.Decim
 	if t.Allowances[key].Cmp(zero) != 1 {
 		delete(t.Allowances, key)
 	}
-
 }
 
 func (t *poolToken) Mint(account string, amount decimal.Decimal) {

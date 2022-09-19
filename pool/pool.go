@@ -1,29 +1,13 @@
 package pool
 
 import (
+	"errors"
+
 	"github.com/DonggyuLim/uniswap/utils"
 	"github.com/shopspring/decimal"
 )
 
-const feeRate = "0.0003"
-
-type Token struct {
-	Name    string          `json:"name"`
-	Balance decimal.Decimal `json:"balance"`
-	Account string          `json:"address"`
-}
-
-func (t *Token) GetBalance() decimal.Decimal {
-	return t.Balance
-}
-
-func (t *Token) GetAddress() string {
-	return t.Account
-}
-
-func (t *Token) GetTokenName() string {
-	return t.Name
-}
+const feeRate = "0.3"
 
 type Pool struct {
 	Name    string
@@ -98,4 +82,13 @@ func (p *Pool) GetLPname() string {
 // return reserve coin name
 func (p *Pool) getPairNameFromPool() (string, string) {
 	return p.X.Name, p.Y.Name
+}
+
+// balance of account compare amount
+func (p *Pool) lpCheckBalance(account string, amount decimal.Decimal) error {
+	balance := p.LP.BalanceOf(account)
+	if balance.Cmp(amount) == -1 {
+		return errors.New("you have not enough lp")
+	}
+	return nil
 }

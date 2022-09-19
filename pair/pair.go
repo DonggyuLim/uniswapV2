@@ -1,12 +1,7 @@
 package pair
 
 import (
-	"bytes"
-	"encoding/gob"
-	"errors"
 	"fmt"
-	"sort"
-	"strings"
 
 	"github.com/DonggyuLim/uniswap/client"
 	"github.com/DonggyuLim/uniswap/db"
@@ -40,8 +35,8 @@ func CreatePair(tokenA, tokenB pool.Token) (Pair, error) {
 	//tokenA 와 tokenB문자열을 합쳐버려서 보관하면 어떨까?
 	//"usdt:dai","dai:usdt" 이런식으로 pair 를 지정해버리면 되지 않을까?
 	// 아니면 tokenA 와 tokenB 의 문자열을 sort 해서 키로 만들어주면 될 것 같다.
-	key := GetKey(tokenA.Name, tokenB.Name)
-	pc := pool.NewPoolToken(key, getSymbol(tokenA.Name, tokenB.Name), 10)
+	key := MakeKey(tokenA.Name, tokenB.Name)
+	pc := pool.NewPoolToken(key, MakeSymbol(tokenA.Name, tokenB.Name), 10)
 	p := Pair{
 		Name: key,
 		Pool: pool.CreatePool(tokenA, tokenB, pc),
@@ -65,34 +60,6 @@ func (p *Pair) GetName() string {
 	return p.Name
 }
 
-func checkSameToken(tokenA, tokenB pool.Token) error {
-	if tokenA.Name == tokenB.Name {
-		return errors.New("same tokens can't become pair")
-	}
-	return nil
-}
-
-// usdt,dai => dai:usdt
-func GetKey(a, b string) string {
-	slice := []string{a, b}
-	sort.Strings(slice)
-	return fmt.Sprintf("%s:%s", slice[0], slice[1])
-}
-
-// usdt,dai => dnuLP
-func getSymbol(a, b string) string {
-	aslice := strings.Split(a, "")
-	bslice := strings.Split(b, "")
-	result := fmt.Sprintf("%sN%sLP", aslice[0], bslice[0])
-	return result
-}
-
-func ByteToPair(data []byte) (Pair, error) {
-	var pair Pair
-	decoder := gob.NewDecoder(bytes.NewBuffer((data)))
-	err := decoder.Decode(&pair)
-	if err != nil {
-		return pair, err
-	}
-	return pair, nil
+func (p *Pair) GetPool() pool.Pool {
+	return p.Pool
 }
