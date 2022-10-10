@@ -1,18 +1,20 @@
 package pool
 
-import "github.com/shopspring/decimal"
+import (
+	m "cosmossdk.io/math"
+)
 
 type Token struct {
-	Name    string          `json:"name"`
-	Balance decimal.Decimal `json:"balance"`
-	Account string          `json:"address"`
+	Name    string `json:"name"`
+	Balance m.Uint `json:"balance"`
+	Account string `json:"address"`
 }
 
-func (t *Token) GetBalance() decimal.Decimal {
+func (t *Token) GetBalance() m.Uint {
 	return t.Balance
 }
 
-func (t *Token) GetAddress() string {
+func (t *Token) GetAccount() string {
 	return t.Account
 }
 

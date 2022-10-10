@@ -4,19 +4,19 @@ import (
 	"errors"
 	"fmt"
 
+	"cosmossdk.io/math"
 	"github.com/DonggyuLim/uniswap/client"
 	"github.com/DonggyuLim/uniswap/db"
 	"github.com/DonggyuLim/uniswap/pair"
 	"github.com/DonggyuLim/uniswap/pool"
 	"github.com/DonggyuLim/uniswap/utils"
 	"github.com/gin-gonic/gin"
-	"github.com/shopspring/decimal"
 )
 
 type AccountResponse struct {
-	TokenName string          `json:"tokenName"`
-	Account   string          `json:"account"`
-	Amount    decimal.Decimal `json:"amount"`
+	TokenName string `json:"tokenName"`
+	Account   string `json:"account"`
+	Amount    string `json:"amount"`
 }
 
 type createPairRequest struct {
@@ -24,9 +24,9 @@ type createPairRequest struct {
 	YToken pool.Token `json:"YToken"`
 }
 
-func AddressisEqaul(a, b pool.Token) error {
+func AccountisEqaul(a, b pool.Token) error {
 	if a.Account != b.Account {
-		return errors.New("x,y address must Equal")
+		return errors.New("x,y account must Equal")
 	}
 	return nil
 }
@@ -39,7 +39,7 @@ func createPair(c *gin.Context) {
 		return
 	}
 
-	err = AddressisEqaul(r.XToken, r.YToken)
+	err = AccountisEqaul(r.XToken, r.YToken)
 	if err != nil {
 		c.String(400, err.Error())
 		return
@@ -61,24 +61,18 @@ func createPair(c *gin.Context) {
 		return
 	}
 
-	err = db.Add("pair", p.Name, utils.DataToByte(p))
+	_, err = client.GetClient().Approve(r.XToken.GetTokenName(), r.XToken.Account, "0xuni", r.XToken.GetBalance().String())
 	if err != nil {
 		c.String(400, err.Error())
 		return
 	}
 
-	res, err := client.GetClient().Approve(r.XToken.GetTokenName(), r.XToken.Account, "0xuni", utils.DecimalToUint64(r.XToken.GetBalance()))
+	_, err = client.GetClient().Approve(r.YToken.GetTokenName(), r.YToken.Account, "0xuni", r.YToken.GetBalance().String())
 	if err != nil {
 		c.String(400, err.Error())
 		return
 	}
-	fmt.Println(res)
-	res, err = client.GetClient().Approve(r.YToken.GetTokenName(), r.YToken.Account, "0xuni", utils.DecimalToUint64(r.YToken.GetBalance()))
-	if err != nil {
-		c.String(400, err.Error())
-		return
-	}
-	fmt.Println(res)
+
 	err = p.Pool.Deposit(address, r.XToken, r.YToken)
 	if err != nil {
 		c.String(400, err.Error())
@@ -105,7 +99,7 @@ func deposit(c *gin.Context) {
 		return
 	}
 
-	err = AddressisEqaul(r.XToken, r.YToken)
+	err = AccountisEqaul(r.XToken, r.YToken)
 	if err != nil {
 		c.String(400, err.Error())
 		return
@@ -131,9 +125,9 @@ func deposit(c *gin.Context) {
 }
 
 type withDrawRequest struct {
-	PairName string          `json:"pairname"`
-	Account  string          `json:"account"`
-	Amount   decimal.Decimal `json:"amount"`
+	PairName string `json:"pairname"`
+	Account  string `json:"account"`
+	Amount   string `json:"amount"`
 }
 
 func withdraw(c *gin.Context) {
@@ -149,7 +143,7 @@ func withdraw(c *gin.Context) {
 		c.String(400, err.Error())
 		return
 	}
-	err = p.Pool.WithDraw(r.Account, r.Amount)
+	err = p.Pool.WithDraw(r.Account, math.NewUintFromString(r.Account))
 	if err != nil {
 		c.String(400, fmt.Sprintf("Fail Withdraw why? %s", err.Error()))
 	}
@@ -159,17 +153,17 @@ func withdraw(c *gin.Context) {
 		"Account": AccountResponse{
 			TokenName: p.Pool.GetLPname(),
 			Account:   r.Account,
-			Amount:    p.Pool.LP.BalanceOf(r.Account),
+			Amount:    p.Pool.LP.BalanceOf(r.Account).String(),
 		},
 	})
 
 }
 
 type swapRequest struct {
-	PairName  string          `json:"pairName"`
-	TokenName string          `json:"tokenName"`
-	Account   string          `json:"account"`
-	Amount    decimal.Decimal `json:"amount"`
+	PairName  string `json:"pairName"`
+	TokenName string `json:"tokenName"`
+	Account   string `json:"account"`
+	Amount    string `json:"amount"`
 }
 
 func swap(c *gin.Context) {
@@ -183,7 +177,7 @@ func swap(c *gin.Context) {
 	if err != nil {
 		c.String(400, "Pair name isn't exsits")
 	}
-	err = p.Pool.Swap(r.TokenName, r.Account, r.Amount)
+	err = p.Pool.Swap(r.TokenName, r.Account, math.NewUintFromString(r.Amount))
 	if err != nil {
 		c.String(400, err.Error())
 	}
@@ -205,19 +199,4 @@ func swap(c *gin.Context) {
 			Amount:    amount,
 		},
 	})
-}
-
-func savePair(p pair.Pair) {
-	db.Add("pair", p.GetName(), utils.DataToByte(p))
-}
-func loadPair(pairName string) (pair.Pair, error) {
-	pairByte, err := db.Get("pair", pairName)
-	if len(pairByte) == 0 || err != nil {
-		return pair.Pair{}, errors.New("not exsits Pair")
-	}
-	p, err := pair.ByteToPair(pairByte)
-	if err != nil {
-		return pair.Pair{}, errors.New("decode fail")
-	}
-	return p, nil
 }

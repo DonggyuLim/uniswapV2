@@ -3,8 +3,8 @@ package pool
 import (
 	"errors"
 
+	m "cosmossdk.io/math"
 	"github.com/DonggyuLim/uniswap/client"
-	"github.com/shopspring/decimal"
 )
 
 func grc20TwoBalanceCheck(address string, tokenA, tokenB Token) error {
@@ -20,23 +20,15 @@ func grc20TwoBalanceCheck(address string, tokenA, tokenB Token) error {
 	return nil
 }
 
-func grc20CheckBalance(tokenName, address string, amount decimal.Decimal) error {
+func grc20CheckBalance(tokenName, address string, amount m.Uint) error {
 	cli := client.GetClient()
-	balance, err := cli.GetBalance(tokenName, address)
-
+	balancestr, err := cli.GetBalance(tokenName, address)
+	balance := m.NewUintFromString(balancestr)
 	if err != nil {
 		return err
 	}
-	if balance.Cmp(amount) == -1 {
+	if balance.LT(amount) {
 		return errors.New("balance isn't enough")
-	}
-	return nil
-}
-
-// Pool 의 메서드로 변경하기!
-func (p *Pool) lpCheckBalance(balance, amount decimal.Decimal) error {
-	if balance.Cmp(amount) == -1 {
-		return errors.New("you have not enough lp")
 	}
 	return nil
 }

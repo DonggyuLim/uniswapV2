@@ -1,6 +1,8 @@
 package utils
 
-import "github.com/shopspring/decimal"
+import (
+	m "cosmossdk.io/math"
+)
 
 // func GetRatio(a, b int64) int64 {
 // 	var Ratio int64
@@ -14,12 +16,6 @@ import "github.com/shopspring/decimal"
 // 	return Ratio
 // }
 
-func NewDecimalFromUint(a uint64) decimal.Decimal {
-	result := decimal.NewFromInt(int64(a))
-	return result
-}
-
-func DecimalToUint64(dec decimal.Decimal) uint64 {
-	result := dec.BigInt().Uint64()
-	return result
+func ChanegeUintFromInt(a m.Int) m.Uint {
+	return m.NewUintFromString(a.String())
 }

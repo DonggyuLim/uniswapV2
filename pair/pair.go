@@ -1,9 +1,6 @@
 package pair
 
 import (
-	"fmt"
-
-	"github.com/DonggyuLim/uniswap/client"
 	"github.com/DonggyuLim/uniswap/db"
 	"github.com/DonggyuLim/uniswap/pool"
 	"github.com/DonggyuLim/uniswap/utils"
@@ -20,6 +17,20 @@ func CreatePair(tokenA, tokenB pool.Token) (Pair, error) {
 	if err != nil {
 		return Pair{}, err
 	}
+	//account가 같은지 확인
+	err = checkAccount(tokenA, tokenB)
+	if err != nil {
+		return Pair{}, err
+	}
+	account := tokenA.GetAccount()
+
+	//풀을 만드려면 처음에 돈을 집어넣어야함.
+	//erc20 토큰에 금액이 있는지 확인하는 로직
+	err = checkBalance(tokenA, tokenB)
+	if err != nil {
+		return Pair{}, err
+	}
+
 	//만약 usdt 와 dai 페어를 만든다면 어떻게 해야할까?
 	//map[usdt] = dai
 	//map[dai] = usdt
@@ -35,20 +46,21 @@ func CreatePair(tokenA, tokenB pool.Token) (Pair, error) {
 	//tokenA 와 tokenB문자열을 합쳐버려서 보관하면 어떨까?
 	//"usdt:dai","dai:usdt" 이런식으로 pair 를 지정해버리면 되지 않을까?
 	// 아니면 tokenA 와 tokenB 의 문자열을 sort 해서 키로 만들어주면 될 것 같다.
+
 	key := MakeKey(tokenA.Name, tokenB.Name)
 	pc := pool.NewPoolToken(key, MakeSymbol(tokenA.Name, tokenB.Name), 10)
 	p := Pair{
 		Name: key,
 		Pool: pool.CreatePool(tokenA, tokenB, pc),
 	}
-	b, err := client.GetClient().GetBalance("USDT", "0xb")
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println("balance----------------", b)
+	
+
+
+	err = p.Pool.Deposit(account, tokenA, tokenB)
 	if err != nil {
 		return Pair{}, err
 	}
+
 	err = db.Add("pair", p.GetName(), utils.DataToByte(p))
 	if err != nil {
 		return Pair{}, err

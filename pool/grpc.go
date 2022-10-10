@@ -3,42 +3,41 @@ package pool
 import (
 	"fmt"
 
+	"cosmossdk.io/math"
 	"github.com/DonggyuLim/uniswap/client"
-	u "github.com/DonggyuLim/uniswap/utils"
-	"github.com/shopspring/decimal"
 )
 
-func sendApprove(tokenName, owner, spender string, amount decimal.Decimal) error {
-	//p.name 으로로??
+func GRPCsendApprove(tokenName, owner, spender string, amount math.Uint) error {
 	fmt.Println("Approve!")
-	_, err := client.GetClient().Approve(tokenName, owner, spender, u.DecimalToUint64(amount))
+	_, err := client.GetClient().Approve(tokenName, owner, spender, amount.String())
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func getAllowance(tokenName, account, poolName string) (decimal.Decimal, error) {
+func GRPCgetAllowance(tokenName, account, poolName string) (math.Uint, error) {
 	fmt.Println("Allowance!")
 	balance, err := client.GetClient().Allowance(tokenName, account, poolName)
 	if err != nil {
-		return decimal.NewFromInt(0), err
+		return math.NewUint(0), err
 	}
-	return balance, err
+
+	return math.NewUintFromString(balance), err
 }
 
-func sendTransferFrom(tokenName, owner, spender, to string, amount decimal.Decimal) error {
+func GRPCsendTransferFrom(tokenName, owner, spender, to string, amount math.Uint) error {
 	fmt.Println("TransferFrom!")
-	_, err := client.GetClient().TransferFrom(tokenName, owner, spender, to, u.DecimalToUint64(amount))
+	_, err := client.GetClient().TransferFrom(tokenName, owner, spender, to, amount.String())
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func sendTransfer(tokenName, from, to string, amount decimal.Decimal) error {
+func GRPCsendTransfer(tokenName, from, to string, amount math.Uint) error {
 	fmt.Println("Transfer!")
-	_, err := client.GetClient().Transfer(tokenName, from, to, u.DecimalToUint64(amount))
+	_, err := client.GetClient().Transfer(tokenName, from, to, amount.String())
 	if err != nil {
 		return err
 	}

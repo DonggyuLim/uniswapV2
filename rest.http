@@ -2,14 +2,16 @@
 http://localhost:8081
 
 
-###
 
+
+###
 GET http://localhost:8081/pair HTTP/1.1
 Content-Type: "application/json"
 
 {
     "pairName":"USDT:WETH"
 }
+
 
 
 ###
@@ -20,12 +22,12 @@ Content-Type: "application/json"
 {
     "XToken":{
         "name":"USDT",
-        "balance":10,
+        "balance":"10",
         "address":"0xb"
     },
     "YToken":{
         "name":"WETH",
-        "balance":200,
+        "balance":"200",
         "address":"0xb"
     }
 }
@@ -33,7 +35,6 @@ Content-Type: "application/json"
 
 
 ###
-
 POST http://localhost:8081/deposit HTTP/1.1
 Content-Type: "application/json"
 
@@ -41,15 +42,17 @@ Content-Type: "application/json"
     "pairName":"USDT:WETH",
     "XToken":{
         "name":"USDT",
-        "balance":11,
+        "balance":"10",
         "address":"0xa"
     },
     "YToken":{
         "name":"WETH",
-        "balance":200,
+        "balance":"200",
         "address":"0xa"
     }
 }
+
+
 
 ###
 POST http://localhost:8081/withdraw HTTP/1.1
@@ -58,8 +61,9 @@ Content-Type: "application/json"
 {
     "pairName":"USDT:WETH",
     "account":"0xa",
-    "amount":10
+    "amount":"10"
 }
+
 
 ###
 POST http://localhost:8081/swap HTTP/1.1
@@ -69,5 +73,5 @@ Content-Type: "application/json"
     "pairName":"USDT:WETH",
     "tokenName":"USDT",
     "account":"0xc",
-    "amount":10
+    "amount":"100"
 }

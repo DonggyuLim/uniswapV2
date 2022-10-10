@@ -8,12 +8,40 @@ import (
 	"sort"
 	"strings"
 
+	m "cosmossdk.io/math"
+	"github.com/DonggyuLim/uniswap/client"
 	"github.com/DonggyuLim/uniswap/pool"
 )
 
 func checkSameToken(tokenA, tokenB pool.Token) error {
 	if tokenA.Name == tokenB.Name {
 		return errors.New("same tokens can't become pair")
+	}
+	return nil
+}
+
+func checkAccount(tokenA, tokenB pool.Token) error {
+	if tokenA.Account != tokenB.Account {
+		return errors.New("account must Eqaul")
+	}
+	return nil
+}
+
+func checkBalance(tokenA, tokenB pool.Token) error {
+	account := tokenA.GetAccount()
+	aBalance, err := client.GetClient().GetBalance(tokenA.Name, account)
+	if err != nil {
+		return err
+	}
+	if tokenA.Balance.LT(m.NewUintFromString(aBalance)) {
+		return errors.New("account balance must more than amount")
+	}
+	bBalance, err := client.GetClient().GetBalance(tokenB.Name, account)
+	if err != nil {
+		return err
+	}
+	if tokenB.Balance.LT(m.NewUintFromString(bBalance)) {
+		return errors.New("account balance must more than amount")
 	}
 	return nil
 }
